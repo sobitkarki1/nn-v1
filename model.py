@@ -83,7 +83,7 @@ class TinyLM:
         return loss, probs
     
     def backward(self, x, targets, logits, probs, hidden, pooled, learning_rate):
-        """Backward pass - simple and robust"""
+        """Backward pass - fully GPU vectorized"""
         batch_size = x.shape[0]
         seq_len = x.shape[1]
         
@@ -96,25 +96,27 @@ class TinyLM:
         dW2 = torch.matmul(hidden.T, dlogits)
         db2 = dlogits.sum(dim=0)
         
-        # Hidden layer gradient
+        # Hidden layer gradient with ReLU
         dhidden = torch.matmul(dlogits, self.W2.T)
         dhidden[hidden <= 0] = 0
         
-        # Embedding layer gradients
+        # First layer gradients
         dW1 = torch.matmul(pooled.T, dhidden)
         db1 = dhidden.sum(dim=0)
         
-        # Gradient for embedding
-        dpooled = torch.matmul(dhidden, self.W1.T)
+        # Embedding gradient - fully vectorized
+        dpooled = torch.matmul(dhidden, self.W1.T)  # (batch, embed_dim)
+        dpooled_per_token = dpooled / seq_len  # Average over sequence
+        
+        # Flatten for scatter operation
+        x_flat = x.reshape(-1)  # (batch * seq,)
+        dpooled_repeated = dpooled_per_token.repeat_interleave(seq_len, dim=0)  # (batch * seq, embed_dim)
+        
+        # Accumulate gradients using scatter_add
         dembedding = torch.zeros_like(self.embedding)
+        dembedding.index_add_(0, x_flat, dpooled_repeated)
         
-        # Simple loop for embedding gradient - straightforward
-        for b in range(batch_size):
-            for s in range(seq_len):
-                idx = x[b, s].item()
-                dembedding[idx] += dpooled[b] / seq_len
-        
-        # Simple parameter updates
+        # Update all parameters
         self.W2 -= learning_rate * dW2
         self.b2 -= learning_rate * db2
         self.W1 -= learning_rate * dW1

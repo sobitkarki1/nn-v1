@@ -42,29 +42,21 @@ def create_batches(X, y, batch_size):
 
 
 def train():
-    """Main training loop - GPU optimized"""
+    """Main training loop"""
     print("=" * 60)
-    print("TINY LANGUAGE MODEL TRAINING (GPU OPTIMIZED)")
+    print("TINY LANGUAGE MODEL TRAINING")
     print("=" * 60)
-    print(f"GPU Available: {GPU_AVAILABLE}")
-    print(f"Device: {device}")
+    print(f"GPU: {GPU_AVAILABLE} | Device: {device}")
     if GPU_AVAILABLE:
         print(f"GPU Memory: {torch.cuda.get_device_properties(device).total_memory / 1e9:.1f} GB")
-    print(f"Dataset length: {len(DATASET_TEXT)} characters")
-    print(f"Sequence length: {SEQ_LENGTH}")
-    print(f"Batch size: {BATCH_SIZE}")
-    print(f"Learning rate: {LEARNING_RATE}")
-    print(f"Epochs: {EPOCHS}")
+    print(f"Dataset: {len(DATASET_TEXT):,} chars | Seq: {SEQ_LENGTH} | Batch: {BATCH_SIZE}")
+    print(f"LR: {LEARNING_RATE} | Epochs: {EPOCHS}")
     print("=" * 60)
     
-    # Initialize tokenizer
+    # Initialize tokenizer and prepare data
     tokenizer = CharTokenizer(DATASET_TEXT, vocab_size=VOCAB_SIZE)
-    
-    # Prepare data - keep on GPU
     X_train, y_train = prepare_data(DATASET_TEXT, tokenizer, SEQ_LENGTH)
-    print(f"Training samples: {X_train.shape[0]}")
-    print(f"Data shape: X={X_train.shape}, y={y_train.shape}")
-    print(f"Data on device: {X_train.device}")
+    print(f"Training samples: {X_train.shape[0]:,}")
     
     # Initialize model
     model = TinyLM(
@@ -73,14 +65,13 @@ def train():
         hidden_dim=HIDDEN_DIM
     )
     
-    # Training loop
+    # Training history
     best_loss = float('inf')
     history = {'epoch': [], 'loss': [], 'perplexity': [], 'accuracy': []}
     
     print("\nTraining started...")
     print("-" * 60)
     
-    # GPU synchronization for timing
     if GPU_AVAILABLE:
         torch.cuda.synchronize()
     
@@ -89,26 +80,22 @@ def train():
         correct = 0
         total = 0
         
-        # Simple batch processing loop - robust and straightforward
+        # Batch processing
         for batch_X, batch_y in create_batches(X_train, y_train, BATCH_SIZE):
-            # Forward pass
             logits, hidden, pooled = model.forward(batch_X)
             loss, probs = model.compute_loss(logits, batch_y)
-            
-            # Backward pass
             model.backward(batch_X, batch_y, logits, probs, hidden, pooled, LEARNING_RATE)
             
-            # Metrics
+            # Track metrics
             predictions = torch.argmax(probs, dim=1)
             correct += (predictions == batch_y).sum().item()
             total += batch_y.shape[0]
             epoch_losses.append(loss.item())
         
-        # GPU sync
         if GPU_AVAILABLE:
             torch.cuda.synchronize()
         
-        # Epoch statistics
+        # Compute statistics
         avg_loss = np.mean(epoch_losses)
         perplexity = calculate_perplexity(avg_loss)
         accuracy = 100 * correct / total
@@ -118,12 +105,11 @@ def train():
         history['perplexity'].append(perplexity)
         history['accuracy'].append(accuracy)
         
-        # Print progress every 10 epochs
+        # Print progress
         if (epoch + 1) % 10 == 0 or epoch == 0:
             print(f"Epoch {epoch+1:3d}/{EPOCHS} | Loss: {avg_loss:.4f} | "
-                  f"Perplexity: {perplexity:.2f} | Accuracy: {accuracy:.2f}%")
+                  f"Perplexity: {perplexity:.2f} | Acc: {accuracy:.2f}%")
         
-        # Save best model
         if avg_loss < best_loss:
             best_loss = avg_loss
     
