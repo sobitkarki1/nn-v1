@@ -149,19 +149,18 @@ class TinyLM:
 
 
 class CharTokenizer:
-    """Simple character-level tokenizer"""
+    """Character-level tokenizer"""
     
     def __init__(self, text, vocab_size=50):
-        # Get most common characters
         from collections import Counter
         char_counts = Counter(text)
         
-        # Reserve special tokens
+        # Special tokens
         self.char_to_idx = {'<PAD>': 0, '<UNK>': 1}
         self.idx_to_char = {0: '<PAD>', 1: '<UNK>'}
         
-        # Add most common characters
-        most_common = [char for char, _ in char_counts.most_common(vocab_size - 2)]
+        # Most common characters
+        most_common = [c for c, _ in char_counts.most_common(vocab_size - 2)]
         for idx, char in enumerate(most_common, start=2):
             self.char_to_idx[char] = idx
             self.idx_to_char[idx] = char
@@ -176,14 +175,7 @@ class CharTokenizer:
 
 
 def calculate_perplexity(loss):
-    """Calculate perplexity from cross-entropy loss"""
+    """Calculate perplexity from loss"""
     if isinstance(loss, torch.Tensor):
         return float(torch.exp(loss).cpu().item())
-    else:
-        return float(np.exp(loss))
-
-
-if __name__ == "__main__":
-    print("Tiny Language Model - Test")
-    model = TinyLM()
-    print(f"Model initialized with {model.total_params} parameters")
+    return float(np.exp(loss))

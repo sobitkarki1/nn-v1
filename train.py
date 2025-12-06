@@ -114,45 +114,34 @@ def train():
             best_loss = avg_loss
     
     print("-" * 60)
-    print("Training completed!")
-    print(f"Best Loss: {best_loss:.4f}")
-    print(f"Final Perplexity: {perplexity:.2f}")
-    print(f"Final Accuracy: {accuracy:.2f}%")
+    print(f"Training completed! Best Loss: {best_loss:.4f}")
+    print(f"Final Perplexity: {perplexity:.2f} | Accuracy: {accuracy:.2f}%")
     print("=" * 60)
     
-    # Generate sample text
-    print("\nGenerating sample text...")
-    print("-" * 60)
-    
+    # Generate sample
+    print("\nSample generation...")
     start_text = "To be"
     start_tokens = tokenizer.encode(start_text)
     generated_tokens = model.generate(start_tokens, max_length=100, temperature=0.8)
     generated_text = tokenizer.decode(generated_tokens)
+    print(f"'{start_text}' → '{generated_text}'")
     
-    print(f"Prompt: '{start_text}'")
-    print(f"Generated: '{generated_text}'")
-    print("-" * 60)
-    
-    # Save model parameters
-    model_params = {
-        'embedding': model.embedding.cpu().numpy(),
-        'W1': model.W1.cpu().numpy(),
-        'b1': model.b1.cpu().numpy(),
-        'W2': model.W2.cpu().numpy(),
-        'b2': model.b2.cpu().numpy(),
-    }
-    
-    np.savez('tiny_lm_model.npz', **model_params)
-    print("\n✓ Model saved to 'tiny_lm_model.npz'")
-    
-    # Save tokenizer
+    # Save model
     import json
+    np.savez('tiny_lm_model.npz',
+             embedding=model.embedding.cpu().numpy(),
+             W1=model.W1.cpu().numpy(),
+             b1=model.b1.cpu().numpy(),
+             W2=model.W2.cpu().numpy(),
+             b2=model.b2.cpu().numpy())
+    
     with open('tokenizer.json', 'w') as f:
         json.dump({
             'char_to_idx': tokenizer.char_to_idx,
             'idx_to_char': {int(k): v for k, v in tokenizer.idx_to_char.items()}
         }, f)
-    print("✓ Tokenizer saved to 'tokenizer.json'")
+    
+    print("\n✓ Saved: tiny_lm_model.npz, tokenizer.json")
     
     return model, tokenizer, history
 
@@ -160,16 +149,12 @@ def train():
 if __name__ == "__main__":
     model, tokenizer, history = train()
     
-    # Print final metrics
+    # Summary
     print("\n" + "=" * 60)
-    print("TRAINING METRICS SUMMARY")
+    print("SUMMARY")
     print("=" * 60)
-    print(f"Model Parameters: {model.total_params}")
-    print(f"Initial Loss: {history['loss'][0]:.4f}")
-    print(f"Final Loss: {history['loss'][-1]:.4f}")
-    print(f"Loss Improvement: {(history['loss'][0] - history['loss'][-1]):.4f}")
-    print(f"Initial Perplexity: {history['perplexity'][0]:.2f}")
-    print(f"Final Perplexity: {history['perplexity'][-1]:.2f}")
-    print(f"Initial Accuracy: {history['accuracy'][0]:.2f}%")
-    print(f"Final Accuracy: {history['accuracy'][-1]:.2f}%")
+    print(f"Parameters: {model.total_params:,}")
+    print(f"Loss: {history['loss'][0]:.4f} → {history['loss'][-1]:.4f} (Δ {history['loss'][0] - history['loss'][-1]:.4f})")
+    print(f"Perplexity: {history['perplexity'][0]:.2f} → {history['perplexity'][-1]:.2f}")
+    print(f"Accuracy: {history['accuracy'][0]:.2f}% → {history['accuracy'][-1]:.2f}%")
     print("=" * 60)

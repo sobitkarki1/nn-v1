@@ -4,6 +4,7 @@ import json
 import numpy as np
 import torch
 from model import TinyLM, CharTokenizer, device
+from config import EMBED_DIM, HIDDEN_DIM
 
 # Load tokenizer
 with open('tokenizer.json', 'r') as f:
@@ -17,10 +18,11 @@ tokenizer.idx_to_char = {int(k): v for k, v in tok_data['idx_to_char'].items()}
 model_data = np.load('tiny_lm_model.npz')
 model = TinyLM(
     vocab_size=len(tokenizer.char_to_idx),
-    embed_dim=8,
-    hidden_dim=16
+    embed_dim=EMBED_DIM,
+    hidden_dim=HIDDEN_DIM
 )
 
+# Load parameters
 model.embedding = torch.tensor(model_data['embedding'], device=device, dtype=torch.float32)
 model.W1 = torch.tensor(model_data['W1'], device=device, dtype=torch.float32)
 model.b1 = torch.tensor(model_data['b1'], device=device, dtype=torch.float32)
@@ -28,20 +30,20 @@ model.W2 = torch.tensor(model_data['W2'], device=device, dtype=torch.float32)
 model.b2 = torch.tensor(model_data['b2'], device=device, dtype=torch.float32)
 
 print('=' * 70)
-print('GENERATED SAMPLES (Temperature variations)')
+print('SAMPLE GENERATION')
 print('=' * 70)
 
 prompts = ['To be', 'The', 'And', 'Love', 'Death']
 temperatures = [0.5, 0.8, 1.2]
 
 for prompt in prompts:
-    print(f'\nPrompt: "{prompt}"')
+    print(f'\n"{prompt}"')
     print('-' * 70)
     start_tokens = tokenizer.encode(prompt)
     
     for temp in temperatures:
-        generated_tokens = model.generate(start_tokens, max_length=80, temperature=temp)
-        generated_text = tokenizer.decode(generated_tokens)
-        print(f'  [T={temp:.1f}] {generated_text}')
+        tokens = model.generate(start_tokens, max_length=80, temperature=temp)
+        text = tokenizer.decode(tokens)
+        print(f'  T={temp:.1f}: {text}')
 
 print('\n' + '=' * 70)
