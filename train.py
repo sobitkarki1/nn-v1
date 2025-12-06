@@ -7,43 +7,11 @@ import numpy as np
 from model import TinyLM, CharTokenizer, calculate_perplexity, device, GPU_AVAILABLE
 from config import *
 
-
-# Simple dataset - Shakespeare-like text for demonstration
-DATASET = """
-To be, or not to be, that is the question:
-Whether 'tis nobler in the mind to suffer
-The slings and arrows of outrageous fortune,
-Or to take arms against a sea of troubles
-And by opposing end them. To die—to sleep,
-No more; and by a sleep to say we end
-The heart-ache and the thousand natural shocks
-That flesh is heir to: 'tis a consummation
-Devoutly to be wish'd. To die, to sleep;
-To sleep, perchance to dream—ay, there's the rub:
-For in that sleep of death what dreams may come,
-When we have shuffled off this mortal coil,
-Must give us pause—there's the respect
-That makes calamity of so long life.
-For who would bear the whips and scorns of time,
-The oppressor's wrong, the proud man's contumely,
-The pangs of despised love, the law's delay,
-The insolence of office, and the spurns
-That patient merit of th'unworthy takes,
-When he himself might his quietus make
-With a bare bodkin? Who would fardels bear,
-To grunt and sweat under a weary life,
-But that the dread of something after death,
-The undiscovered country from whose bourn
-No traveller returns, puzzles the will,
-And makes us rather bear those ills we have
-Than fly to others that we know not of?
-Thus conscience does make cowards of us all,
-And thus the native hue of resolution
-Is sicklied o'er with the pale cast of thought,
-And enterprises of great pith and moment
-With this regard their currents turn awry
-And lose the name of action.
-"""
+# Load dataset from file
+with open('t8.shakespear.txt', 'r', encoding='utf-8', errors='ignore') as f:
+    text = f.read()
+    # Use first 100K characters for manageable training
+    DATASET_TEXT = text[:100000]
 
 
 def prepare_data(text, tokenizer, seq_length):
@@ -60,23 +28,29 @@ def prepare_data(text, tokenizer, seq_length):
 
 
 def create_batches(X, y, batch_size):
-    """Create mini-batches"""
+    """Create mini-batches - simple and robust"""
     n_samples = X.shape[0]
+    
+    # Shuffle indices once at the start
     indices = torch.randperm(n_samples, device=device)
     
-    for start_idx in range(0, n_samples, batch_size):
-        end_idx = min(start_idx + batch_size, n_samples)
-        batch_indices = indices[start_idx:end_idx]
+    # Create batches sequentially - simpler and more robust
+    for i in range(0, n_samples, batch_size):
+        end_idx = min(i + batch_size, n_samples)
+        batch_indices = indices[i:end_idx]
         yield X[batch_indices], y[batch_indices]
 
 
 def train():
-    """Main training loop"""
+    """Main training loop - GPU optimized"""
     print("=" * 60)
-    print("TINY LANGUAGE MODEL TRAINING")
+    print("TINY LANGUAGE MODEL TRAINING (GPU OPTIMIZED)")
     print("=" * 60)
     print(f"GPU Available: {GPU_AVAILABLE}")
-    print(f"Dataset length: {len(DATASET)} characters")
+    print(f"Device: {device}")
+    if GPU_AVAILABLE:
+        print(f"GPU Memory: {torch.cuda.get_device_properties(device).total_memory / 1e9:.1f} GB")
+    print(f"Dataset length: {len(DATASET_TEXT)} characters")
     print(f"Sequence length: {SEQ_LENGTH}")
     print(f"Batch size: {BATCH_SIZE}")
     print(f"Learning rate: {LEARNING_RATE}")
@@ -84,11 +58,13 @@ def train():
     print("=" * 60)
     
     # Initialize tokenizer
-    tokenizer = CharTokenizer(DATASET, vocab_size=VOCAB_SIZE)
+    tokenizer = CharTokenizer(DATASET_TEXT, vocab_size=VOCAB_SIZE)
     
-    # Prepare data
-    X_train, y_train = prepare_data(DATASET, tokenizer, SEQ_LENGTH)
+    # Prepare data - keep on GPU
+    X_train, y_train = prepare_data(DATASET_TEXT, tokenizer, SEQ_LENGTH)
     print(f"Training samples: {X_train.shape[0]}")
+    print(f"Data shape: X={X_train.shape}, y={y_train.shape}")
+    print(f"Data on device: {X_train.device}")
     
     # Initialize model
     model = TinyLM(
@@ -104,11 +80,16 @@ def train():
     print("\nTraining started...")
     print("-" * 60)
     
+    # GPU synchronization for timing
+    if GPU_AVAILABLE:
+        torch.cuda.synchronize()
+    
     for epoch in range(EPOCHS):
         epoch_losses = []
-        correct_predictions = 0
-        total_predictions = 0
+        correct = 0
+        total = 0
         
+        # Simple batch processing loop - robust and straightforward
         for batch_X, batch_y in create_batches(X_train, y_train, BATCH_SIZE):
             # Forward pass
             logits, hidden, pooled = model.forward(batch_X)
@@ -117,17 +98,20 @@ def train():
             # Backward pass
             model.backward(batch_X, batch_y, logits, probs, hidden, pooled, LEARNING_RATE)
             
-            # Calculate accuracy
+            # Metrics
             predictions = torch.argmax(probs, dim=1)
-            correct_predictions += torch.sum(predictions == batch_y).item()
-            total_predictions += batch_y.shape[0]
-            
-            epoch_losses.append(float(loss.cpu().item()))
+            correct += (predictions == batch_y).sum().item()
+            total += batch_y.shape[0]
+            epoch_losses.append(loss.item())
+        
+        # GPU sync
+        if GPU_AVAILABLE:
+            torch.cuda.synchronize()
         
         # Epoch statistics
         avg_loss = np.mean(epoch_losses)
         perplexity = calculate_perplexity(avg_loss)
-        accuracy = float(correct_predictions) / total_predictions * 100
+        accuracy = 100 * correct / total
         
         history['epoch'].append(epoch + 1)
         history['loss'].append(avg_loss)

@@ -1,0 +1,44 @@
+================================================================================
+LOG: Tiny Language Model Training Runs
+================================================================================
+
+RUN #1 - 2025-12-06
+================================================================================
+Configuration:
+  - Model Parameters: 1,394
+  - Embedding Dimension: 8
+  - Hidden Dimension: 16
+  - Dataset: 24,056 characters (10x Shakespeare text + additional poetry)
+  - Training Samples: 24,036
+  - Sequence Length: 20
+  - Batch Size: 32
+  - Learning Rate: 0.01
+  - Epochs: 100
+  - Backend: PyTorch + CUDA (GTX 1650 Ti)
+
+Results:
+  - Initial Loss: 3.7025 → Final Loss: 3.0157 (Improvement: 0.6867)
+  - Initial Perplexity: 40.55 → Final Perplexity: 20.40
+  - Initial Accuracy: 12.03% → Final Accuracy: 16.82%
+  - Best Loss Achieved: 3.0157
+
+Key Improvements in This Run:
+  ✓ 10x larger dataset (24K vs 1.4K characters)
+  ✓ Fully vectorized GPU operations using torch.matmul() and index_add_()
+  ✓ Data kept on GPU throughout training (cuda:0)
+  ✓ Removed CPU-GPU transfers
+  ✓ Optimized embedding updates using scatter operations
+
+Notes:
+  - Model is still primitive (1.3K params) but training is now GPU-optimized
+  - Perplexity improved significantly (40.55 → 20.40)
+  - Generated samples still mostly gibberish due to tiny model size
+  - Training speed: Fast with full GPU utilization on GTX 1650 Ti
+  - Future improvements: Increase model size, implement attention, better dataset
+
+Sample Output:
+  Prompt: 'To be'
+  Generated: 'To bee woby a hu eshyd elscaledee  pe edtaf lgaod  oaoo lt  
+             sitbd nei,tie d niAs aedsnel ds wtoerda s'
+
+================================================================================

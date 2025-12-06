@@ -83,43 +83,43 @@ class TinyLM:
         return loss, probs
     
     def backward(self, x, targets, logits, probs, hidden, pooled, learning_rate):
-        """Backward pass and parameter update"""
+        """Backward pass - simple and robust"""
         batch_size = x.shape[0]
+        seq_len = x.shape[1]
         
-        # Gradient of loss w.r.t logits
+        # Loss gradient
         dlogits = probs.clone()
         dlogits[torch.arange(batch_size, device=device), targets] -= 1
         dlogits /= batch_size
         
-        # Gradients for W2 and b2
+        # Output layer gradients
         dW2 = torch.matmul(hidden.T, dlogits)
-        db2 = torch.sum(dlogits, dim=0)
+        db2 = dlogits.sum(dim=0)
         
-        # Gradient w.r.t hidden
+        # Hidden layer gradient
         dhidden = torch.matmul(dlogits, self.W2.T)
-        dhidden[hidden <= 0] = 0  # ReLU gradient
+        dhidden[hidden <= 0] = 0
         
-        # Gradients for W1 and b1
+        # Embedding layer gradients
         dW1 = torch.matmul(pooled.T, dhidden)
-        db1 = torch.sum(dhidden, dim=0)
+        db1 = dhidden.sum(dim=0)
         
-        # Gradient w.r.t pooled
+        # Gradient for embedding
         dpooled = torch.matmul(dhidden, self.W1.T)
+        dembedding = torch.zeros_like(self.embedding)
         
-        # Gradient w.r.t embedding (broadcasting back to sequence)
-        dembedded = dpooled[:, None, :] / x.shape[1]  # (batch_size, 1, embed_dim)
+        # Simple loop for embedding gradient - straightforward
+        for b in range(batch_size):
+            for s in range(seq_len):
+                idx = x[b, s].item()
+                dembedding[idx] += dpooled[b] / seq_len
         
-        # Update embedding
-        for i in range(batch_size):
-            for j in range(x.shape[1]):
-                idx = x[i, j]
-                self.embedding[idx] -= learning_rate * dembedded[i, 0]
-        
-        # Update parameters
+        # Simple parameter updates
         self.W2 -= learning_rate * dW2
         self.b2 -= learning_rate * db2
         self.W1 -= learning_rate * dW1
         self.b1 -= learning_rate * db1
+        self.embedding -= learning_rate * dembedding
     
     def generate(self, start_tokens, max_length=50, temperature=1.0):
         """Generate text given start tokens"""
