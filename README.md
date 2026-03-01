@@ -1,6 +1,18 @@
+> **[ARCHIVED]** This repository is kept for historical reference. It represents an early experiment (~1394 parameters, NumPy/CuPy).
+> The current generation neural network project is **[nn-v4](https://github.com/sobitkarki1/nn-v4)** — a 1.5B-parameter GPT-style transformer.
+
+---
+
 # Tiny Language Model (~1000 parameters)
 
 A primitive character-level language model using NumPy with GPU acceleration (CuPy).
+Part of a learning progression: **nn-v1 → nn-v2 → nn-v4**.
+
+| Version | Params | Architecture | Framework | Notes |
+|---------|--------|--------------|-----------|-------|
+| **nn-v1** (this) | ~1.4K | Embedding + MLP | NumPy/CuPy | Character-level; ultra-lightweight |
+| nn-v2 | ~6.8K | Bigram + transformer block | PyTorch | Context window; GPU-accelerated |
+| nn-v4 | ~1.45B | GPT decoder (24 layers) | PyTorch | Mixed precision, Flash Attention 2 |
 
 ## Features
 - **~1000 parameters**: Ultra-lightweight neural network
@@ -8,88 +20,61 @@ A primitive character-level language model using NumPy with GPU acceleration (Cu
 - **Character-level**: Learns patterns at character granularity
 - **Simple architecture**: Embedding → Average Pooling → Hidden Layer (ReLU) → Output
 
-## Model Architecture
-```
-Input (character indices)
-    ↓
-Embedding Layer (50 × 8 = 400 params)
-    ↓
-Average Pooling
-    ↓
-Hidden Layer (8 × 16 + 16 bias = 144 params)
-    ↓
-ReLU Activation
-    ↓
-Output Layer (16 × 50 + 50 bias = 850 params)
-    ↓
-Softmax
-```
-**Total: ~1394 parameters**
-
-## Installation
-
-```powershell
+## Usage
+`ash
 pip install -r requirements.txt
-```
+python train.py    # train + save model
+python generate.py # interactive text generation
+`
+"@
 
-For GPU support, you need CUDA 11.x installed. If CuPy installation fails, the model will fall back to CPU mode.
+ = @"
+> **[ARCHIVED]** This repository is kept for historical reference. It represents an intermediate experiment (~6.8K parameters, PyTorch bigram model).
+> The current generation neural network project is **[nn-v4](https://github.com/sobitkarki1/nn-v4)** — a 1.5B-parameter GPT-style transformer.
+
+---
+
+# Simple Text Inference Model
+
+A minimal character-level bigram language model using PyTorch.
+Part of a learning progression: **nn-v1 → nn-v2 → nn-v4**.
+
+| Version | Params | Architecture | Framework | Notes |
+|---------|--------|--------------|-----------|-------|
+| nn-v1 | ~1.4K | Embedding + MLP | NumPy/CuPy | Character-level; ultra-lightweight |
+| **nn-v2** (this) | ~6.8K | Bigram + transformer block | PyTorch | 8-char context window |
+| nn-v4 | ~1.45B | GPT decoder (24 layers) | PyTorch | Mixed precision, Flash Attention 2 |
+
+## Files
+- model.py — BigramModel class
+- 	rain.py — Training script (creates igram_model.pth)
+- generate.py — Interactive text generation
+- data.txt — Shakespeare training text
 
 ## Usage
+`ash
+pip install -r requirements.txt
+python train.py    # train for 5000 iterations
+python generate.py # interactive generation
+`
+"@
 
-### Training
-```powershell
-python train.py
-```
+ = @"
+> **[ARCHIVED]** This is a legacy copy of Andrej Karpathy's nanoGPT used for early experiments.
+> The current generation neural network project is **[nn-v4](https://github.com/sobitkarki1/nn-v4)** — a 1.5B-parameter GPT-style transformer built from scratch.
 
-This will:
-- Train the model on Shakespeare text for 100 epochs
-- Display loss, perplexity, and accuracy metrics
-- Save the trained model to `tiny_lm_model.npz`
-- Generate sample text
+---
 
-### Text Generation
-```powershell
-python generate.py
-```
+# nanogpt-legacy
 
-Interactive text generation from prompts.
+An early experiment following Andrej Karpathy's [nanoGPT](https://github.com/karpathy/nanoGPT) to understand GPT-style transformer training.
 
-### Evaluation Metrics
+Key learnings from this stage fed into the design of [nn-v4](https://github.com/sobitkarki1/nn-v4).
 
-The model tracks three key metrics:
-
-1. **Loss (Cross-Entropy)**: Lower is better
-   - Measures how well the model predicts the next character
-   - Range: 0 to ∞ (typically 0-4 for this task)
-
-2. **Perplexity**: Lower is better
-   - Perplexity = exp(loss)
-   - Interpretable as "average branching factor"
-   - Range: 1 to ∞ (1 is perfect)
-
-3. **Accuracy**: Higher is better
-   - Percentage of correctly predicted next characters
-   - Range: 0% to 100%
-
-## Configuration
-
-Edit `config.py` to adjust:
-- `VOCAB_SIZE`: Number of unique characters
-- `EMBED_DIM`: Embedding dimension
-- `HIDDEN_DIM`: Hidden layer size
-- `SEQ_LENGTH`: Input sequence length
-- `BATCH_SIZE`: Training batch size
-- `LEARNING_RATE`: Learning rate
-- `EPOCHS`: Number of training epochs
-
-## Dataset
-
-Currently uses Shakespeare's "To be or not to be" soliloquy. You can easily swap this with any text data by modifying the `DATASET` variable in `train.py`.
-
-## GPU Requirements
-
-- NVIDIA GPU with CUDA support (GTX 1650 Ti supported)
-- CUDA 11.x
-- CuPy package
-
-If GPU is not available, the code automatically falls back to CPU with NumPy.
+## Learning Progression
+| Repo | What was learned |
+|------|-----------------|
+| nn-v1 | Forward pass, backprop by hand (NumPy) |
+| nn-v2 | PyTorch autograd, bigram model |
+| nanogpt-legacy | Attention mechanism, transformer blocks |
+| **nn-v4** | Full GPT at scale (1.5B params, The Pile, Flash Attention 2) |
